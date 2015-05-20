@@ -16,5 +16,5 @@ RUN apt-get update && \
     quobyte-client \
     dnsutils
 
-ADD ./main.sh /opt/main.sh
+COPY ./main.sh /opt/main.sh
 ENTRYPOINT ["/opt/main.sh"]
