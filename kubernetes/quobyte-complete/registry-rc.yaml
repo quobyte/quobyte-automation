@@ -62,6 +62,7 @@ spec:
               device.type=DIR_DEVICE
               EOF
               fi
+              export QUOBYTE_EXTRA_SERVICE_CONFIG=test.device_dir=/devices
               exec /bin/bash -x /opt/main.sh
           resources:
             limits:

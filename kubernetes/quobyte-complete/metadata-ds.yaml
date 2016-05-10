@@ -42,6 +42,7 @@ spec:
             device.type=METADATA_DEVICE
             EOF
             fi
+            export QUOBYTE_EXTRA_SERVICE_CONFIG=test.device_dir=/devices
             exec /bin/bash -x /opt/main.sh
         volumeMounts:
           - name: devices
