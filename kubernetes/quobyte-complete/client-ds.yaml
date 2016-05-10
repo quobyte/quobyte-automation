@@ -24,8 +24,9 @@ spec:
             else
               mkdir -p ${QUOBYTE_MOUNT_POINT}
             fi
+            ldd ./bin/mount.quobyte
             /bin/nsenter --target=1 --wd=. --mount -- \
-              lib/ld-linux-x86-64.so.2 --library-path ./lib \
+              lib64/ld-linux-x86-64.so.2 --library-path ./lib64 \
               ./bin/mount.quobyte -f -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} ${ADDR}/${VOLUME} ${QUOBYTE_MOUNT_POINT}
         securityContext:
           privileged: true
