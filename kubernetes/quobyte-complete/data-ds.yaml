@@ -45,7 +45,7 @@ spec:
             exec /bin/bash -x /opt/main.sh
         volumeMounts:
           - name: devices
-            mountPath: /devices
+            mountPath: /devices/data
         resources:
           requests:
             memory: "512Mi"
@@ -53,4 +53,4 @@ spec:
       volumes:
       - name: devices
         hostPath:
-          path: /mnt
+          path: /mnt/data

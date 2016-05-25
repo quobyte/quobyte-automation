@@ -11,12 +11,14 @@ spec:
     spec:
       containers:
       - name: quobyte-client
-        image: quay.io/sttts/quobyte-client-nsenter:1.2.10
+        image: quay.io/quobyte/quobyte-client:1.2.10
         command:
           - /bin/sh
           - -xec
           - |
-            ADDR=$(echo $(getent hosts ${QUOBYTE_REGISTRY} | awk '{print $1":7866"}') | tr ' ' ,)
+            #ADDR=$(echo $(getent hosts ${QUOBYTE_REGISTRY} | awk '{print $1":7866"}') | tr ' ' ,)
+            ADDR=$(echo $(nslookup registry.quobyte.cluster.local | grep -v 10.100.0.10 | grep Address | awk '{split($0,a,":"); print a[2]}'  | awk '{print $1":7866"}') | tr ' ' ,)
+            echo "ADDR is $ADDR"
             VOLUME=$(basename ${QUOBYTE_MOUNT_POINT})
             touch /rootfs/etc/fuse.conf
             if cut -d" " -f2 /etc/mtab | grep -q ${QUOBYTE_MOUNT_POINT}; then
@@ -24,9 +26,11 @@ spec:
             else
               mkdir -p ${QUOBYTE_MOUNT_POINT}
             fi
-            /bin/nsenter --target=1 --wd=. --mount -- \
-              lib/ld-linux-x86-64.so.2 --library-path ./lib \
-              ./bin/mount.quobyte -f -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} ${ADDR}/${VOLUME} ${QUOBYTE_MOUNT_POINT}
+            #/bin/nsenter --target=1 --wd=. \
+            #  --mount --  /lib/ld-linux-x86-64.so.2 \
+            #  /lib/libmicrohttpd.so.10 \
+            #  --library-path ./lib \
+            ./bin/mount.quobyte -f -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} ${ADDR}/${VOLUME} ${QUOBYTE_MOUNT_POINT}
         securityContext:
           privileged: true
         env:
@@ -35,7 +39,7 @@ spec:
           - name: QUOBYTE_CLIENT_LOG_LEVEL
             value: INFO
           - name: QUOBYTE_REGISTRY
-            value: registry
+            value: registry.quobyte.cluster.local
           - name: QUOBYTE_MOUNT_POINT
             value: /storage/cluster
         ports:
@@ -45,7 +49,7 @@ spec:
             protocol: TCP
         volumeMounts:
           - name: storage
-            mountPath: /storage
+            mountPath: storage
           - name: rootfs
             mountPath: /rootfs
         imagePullPolicy: Always

@@ -47,7 +47,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: devices
-              mountPath: /devices
+              mountPath: /devices/dev1
           command:
             - /bin/bash
             - -xec
