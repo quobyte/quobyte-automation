@@ -8,11 +8,11 @@ spec:
     metadata:
       labels:
         role: metadata
-        version: 1.2.10
+        version: 1.2.16
     spec:
       containers:
       - name: quobyte-metadata
-        image: quay.io/quobyte/quobyte-server:1.2.10
+        image: quay.io/quobyte/quobyte-server:1.2.16
         securityContext:
           privileged: true
         env:
@@ -45,7 +45,7 @@ spec:
             exec /bin/bash -x /opt/main.sh
         volumeMounts:
           - name: devices
-            mountPath: /devices
+            mountPath: /devices/metadata
         resources:
           limits:
             memory: "512Mi"
@@ -53,4 +53,4 @@ spec:
       volumes:
       - name: devices
         hostPath:
-          path: /mnt
+          path: /mnt/metadata

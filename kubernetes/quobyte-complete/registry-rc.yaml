@@ -9,13 +9,13 @@ spec:
     metadata:
       labels:
         role: registry
-        version: 1.2.10
+        version: 1.2.16
       name: registry-bootstrap
       namespace: quobyte
     spec:
       containers:
         - name: quobyte-registry
-          image: quay.io/quobyte/quobyte-server:1.2.10
+          image: quay.io/quobyte/quobyte-server:1.2.16
           securityContext:
             privileged: true
           env:
@@ -47,7 +47,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: devices
-              mountPath: /devices
+              mountPath: /devices/dev1
           command:
             - /bin/bash
             - -xec
