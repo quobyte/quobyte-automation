@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
-  name: client
+  name: client-debug
   namespace: quobyte
 spec:
   template:
@@ -26,10 +26,12 @@ spec:
             else
               mkdir -p ${QUOBYTE_MOUNT_POINT}
             fi
-            /bin/nsenter --target=1 --wd=. \
-              --mount -- lib/ld-linux-x86-64.so.2 \
-              --library-path ./lib \
-            ./bin/mount.quobyte -f -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} ${ADDR}/${VOLUME} ${QUOBYTE_MOUNT_POINT}
+            #/bin/nsenter --target=1 --wd=. \
+            #  --mount --  /lib/ld-linux-x86-64.so.2 \
+            #  /lib/libmicrohttpd.so.10 \
+            #  --library-path ./lib \
+            #./bin/mount.quobyte -f -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} ${ADDR}/${VOLUME} ${QUOBYTE_MOUNT_POINT}
+            /bin/sleep 3600
         securityContext:
           privileged: true
         env:
