@@ -21,23 +21,26 @@ type QuobyteServiceSpec struct {
 	APIService      `json:"api,omitempty"`
 	DataService     `json:"data,omitempty"`
 	MetadataService `json:"metadata,omitempty"`
-	Version         string `json:"version"`
 }
-
+type Service struct {
+	Nodes         []string `json:nodes`
+	Image         string   `json:"image"`
+	RollingUpdate bool     `json:"rolling_updates_enabled"`
+}
 type RegistryService struct {
-	Nodes []string `json:nodes`
-}
-
-type APIService struct {
-	Nodes []string `json:nodes`
+	Service
 }
 
 type DataService struct {
-	Nodes []string `json:nodes`
+	Service
 }
 
 type MetadataService struct {
-	Nodes []string `json:nodes`
+	Service
+}
+
+type APIService struct {
+	Service
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

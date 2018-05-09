@@ -43,7 +43,7 @@ func CreateAllQuobyteCrd() error {
 			if err != nil {
 				if apierrors.IsAlreadyExists(err) {
 					glog.Infof("CRD %s already exists\n", file.Name())
-					return nil
+					continue
 				}
 				glog.Errorf("Failed to create CRD %s\n", file.Name())
 				return err

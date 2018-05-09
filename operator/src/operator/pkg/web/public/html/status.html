@@ -1,0 +1,43 @@
+<div>
+    {{ if .ClientPending}}
+    <b>Clients Status:</b></br>
+       {{ range .ClientPending}}
+            Node: {{ .Node}} </br>
+            &nbsp;Pod: {{.Pod}}  </br>
+            &nbsp;Expected Image: {{.ExpectedImage}} </br>
+            &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
+            &nbsp;Blocking Pods:  </br>
+            {{if .BlockingPods}}
+            {{ range .BlockingPods }}
+                <span>&nbsp;&nbsp;{{.}} </br></span>
+            {{end}}
+            {{end}}
+        {{end}}
+        {{end}}
+        {{ if .RegistryPending}}
+        <b>Registry Status:</b></br>
+        {{ range .RegistryPending}}
+            Node: {{ .Node}} </br>
+            &nbsp;Pod: {{.Pod}}  </br>
+            &nbsp;Expected Image: {{.ExpectedImage}} </br>
+            &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
+        {{end}}
+        {{end}}
+        {{ if .DataPending}}
+        {{ range .DataPending}}
+            Node: {{ .Node}} </br>
+            &nbsp;Pod: {{.Pod}}  </br>
+            &nbsp;Expected Image: {{.ExpectedImage}} </br>
+            &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
+        {{end}}
+        {{end}}
+        {{ if .MetadataPending}}
+        {{ range .MetadataPending}}
+            Node: {{ .Node}} </br>
+            &nbsp;Pod: {{.Pod}}  </br>
+            &nbsp;Expected Image: {{.ExpectedImage}} </br>
+            &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
+        {{end}}
+        {{end}}
+   </div>
+   <div><input type="button" value="Status JSON"/></div>

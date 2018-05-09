@@ -15,6 +15,15 @@ import (
 	crdv1 "operator/pkg/api/quobyte.com/v1"
 )
 
+var (
+	config           *rest.Config
+	QclientConfig    *quobytev1.Clientset
+	err              error
+	KubernetesClient *kubernetes.Clientset
+	APIServerClient  *apiextensionsclient.Clientset
+	quobyteNameSpace = "quobyte"
+)
+
 //InitClient Initializes kubernetes client for given kubeconfig
 func InitClient(kubeconfig string) {
 	if kubeconfig == "" { // must be running inside cluster, try to get from env

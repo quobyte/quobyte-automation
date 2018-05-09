@@ -17,15 +17,8 @@ type QuobyteClient struct {
 
 // QclientSpec contains spec for quobyte client resource.
 type QuobyteClientSpec struct {
-	Nodes   []string `json:"nodes"`
-	Version string   `json:"version"`
+	Service
 }
-
-//QClientContainer quobyte client container image details.
-// type QClientContainer struct {
-// 	Name  string `json:"- name"`
-// 	Image string `json:"image"`
-// }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

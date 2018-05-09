@@ -1,0 +1,12 @@
+<div>
+    {{range . }}
+       Name: {{.NodeName}} <br/>
+       {{ range .Pods.Items }}
+        &nbsp; Pod: {{.Name}} <br/>
+        {{ range .Spec.Containers }}
+        &nbsp; Container Name: {{ .Name}}  <br/>
+        &nbsp; Container URL:  {{ .Image}} <br/>
+        {{ end }}
+       {{ end }}
+    {{end}}
+</div>
