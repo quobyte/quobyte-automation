@@ -91,6 +91,9 @@ metadata:
   name: quobyte-operator
   namespace: quobyte
 spec:
+  selector:
+    matchLabels:
+      name: quobyte-operator
   replicas: 1
   template:
     metadata:
@@ -106,6 +109,17 @@ spec:
         ports:
         - containerPort: 7878
           protocol: TCP
+        readinessProbe:
+          timeoutSeconds: 5
+          httpGet:
+            port: 7878
+            path: /menu
+        livenessProbe:
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+          httpGet:
+            port: 7878
+            path: /menu
 ---
 apiVersion: v1
 kind: Service
