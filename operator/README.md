@@ -13,25 +13,25 @@ Can it be any easier and faster?
 
 ## Deploy Operator
 Create the *quobyte* namespace. This is where the operator and the cluster lives.
-``` bash
-kubectl create -f quobyte-ns.yaml
+```bash
+kubectl create -f deploy/quobyte-ns.yaml
 ```
-Quobyte runs best with 3 replicas of the registry, where we require 1 bootstrapped registry. To make the setup as easy as possible, we defined an ephemeral registry, which is used to bootstrap the cluster. The final cluster will have registry devices on nodes 2, 3, and 4, so we will use node1 for bootstrap.
+Quobyte runs best with 3 replicas of the registry, where we require 1 bootstrapped registry. To make the setup as easy as possible, we defined an ephemeral registry, which is used to bootstrap the cluster. The final cluster will have registry devices on nodes 2, 3, and 4, so we will use `node1` for bootstrap.
 
-The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and allows to fine tune the memory limits for the services. Edit the file to point to your bootstrap registry.
+The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and allows to fine tune the memory limits for the services. Copy `quobyte-config.yaml.tmp` to `quobyte-config.yaml` and edit the file to point to your bootstrap registry.
 
-``` yaml
+```yaml
   registry.bootstrap_node: "node1"
 ```
 
 Now install the operator to the quobyte namespace.
-``` bash
-kubectl -n quobyte create -f quobyte-config.yaml
-kubectl -n quobyte create -f operator.yaml
+```bash
+kubectl -n quobyte create -f deploy/quobyte-config.yaml
+kubectl -n quobyte create -f deploy/operator.yaml
 ```
 
 ## Configure Quobyte Services
-To run the Quobyte services in kubernetes, first edit the services-config.yaml file,
+To run the Quobyte services in kubernetes, first copy the `services-config.yaml.tmp` to `services-config.yaml.tmp` then edit the `services-config.yaml` file,
 and determine which node should run which services.
 
 We chose node4 to be the bootstrap registry, but we need to define 3 other nodes to persist the fully replicated cluster. We also recommend to start at least 3 metadata services and data services on all nodes which contain devices which should store your valuable information. Edit the `services-config.yaml` to match your cluster:
@@ -62,9 +62,9 @@ We chose node4 to be the bootstrap registry, but we need to define 3 other nodes
 
 When the services are installed, the operator will start to deploy the services to the target nodes.
 ```
-kubectl -n quobyte create -f services.yaml
-kubectl -n quobyte create -f services-config.yaml
-kubectl -n quobyte create -f qmgmt-pod.yaml
+kubectl -n quobyte create -f deploy/services.yaml
+kubectl -n quobyte create -f deploy/services-config.yaml
+kubectl -n quobyte create -f deploy/qmgmt-pod.yaml
 
 kubectl -n quobyte get pods -o wide -w
 ```
@@ -88,7 +88,7 @@ You can either proceed to set up the devices with qmgmt or jump over to the webc
 
 Unless you already have set up an ingress to access the service, you can acceess the console with a port forward
 ```
-kubectl -n quobyte port-forward "$(kubectl get po -owide -n quobyte | grep webconsole | awk '{print $1}')" 8080:8080
+kubectl -n quobyte port-forward $(kubectl -n quobyte get po -l role=webconsole -o name) 8080:8080
 ```
 Then point your browser to http://localhost:8080 and follow the setup wizard.
 
@@ -108,7 +108,6 @@ unassociated devices.
 Now let's spin up our three target registries.
 Edit the services-config.yaml again and add nodes 2 to 4 as registries.
 
-```yaml
 Edit the `services-config.yaml` to match your cluster
 
 ```yaml
@@ -126,7 +125,7 @@ An update to the services-config CRD triggers the operator, which will start the
 registries then.
 
 ```bash
-kubectl -n quobyte apply -f services-config.yaml
+kubectl -n quobyte apply -f deploy/services-config.yaml
 ```
 
 Wait until the pods are running and check that Quobyte found the devices.
@@ -164,7 +163,7 @@ and it is safe to delete it. So remove it from the `services-config.yaml`
 ```
 and update the service-config. The operator will then terminate the ephemeral registry.
 ```bash
-kubectl -n quobyte apply -f services-config.yaml
+kubectl -n quobyte apply -f deploy/services-config.yaml
 ```
 Wait some seconds and check that all 3 persisted registries are ONLINE.
 ```bash
@@ -192,7 +191,7 @@ Now you have a fully working Quobyte cluster. For further configuration and crea
 The operator can deploy and manage Quobyte clients - which serve the volumes to your application pods. Every kubernetes node which should provide access to Quobyte storage, has to run a Quobyte client pod.
 
 If the operator finds a client CRD, it will start to deploy the according pods.
-First edit the `client-config.yaml`
+First copy the `client-config.yaml.tmp` to `client-config.yaml` then edit it.
 
 ```yaml
 spec:
@@ -206,8 +205,8 @@ spec:
 ```
 
 ```bash
-kubectl -n quobyte create -f client-config.yaml
-kubectl -n quobyte create -f client.yaml
+kubectl -n quobyte create -f deploy/client-config.yaml
+kubectl -n quobyte create -f deploy/client.yaml
 ```
 
 Once the client-config is created, you should see pods being started on the
@@ -216,7 +215,7 @@ desired hosts.
 If you add or remove clients, edit the client-config.yaml and update it with
 
 ```
-kubectl -n quobyte apply -f client-config.yaml
+kubectl -n quobyte apply -f deploy/client-config.yaml
 ```
 
 When the clients are ready, you can start using Quobyte volumes in your pods.
@@ -238,16 +237,16 @@ The administrator will then need to manually stop or drain the pods.
 
 The operator comes with a service and a status page. With kubectl, you can reach it on http://localhost:7878
 ```bash
-kubectl -n quobyte port-forward quobyte-operator-xzy 7878:7878
+kubectl -n quobyte port-forward $(kubectl -n quobyte get po -l role=quobyte-operator -o name) 7878:7878
 ```
 
 # Uninstall Quobyte with Operator
 If you want to remove all services or clients, remove the config files, before
 you delete the deployments or the operator. This will terminate the scheduled pods and remove the all labels, which the operator applied to any nodes.
 ```
-kubectl -n quobyte delete -f services-config.yaml
+kubectl -n quobyte delete -f deploy/services-config.yaml
 or
-kubectl -n quobyte delete -f client-config.yaml
+kubectl -n quobyte delete -f deploy/client-config.yaml
 ```
 
 # Build Operator from Source

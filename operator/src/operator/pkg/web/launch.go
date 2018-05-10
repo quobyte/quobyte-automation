@@ -6,15 +6,6 @@ import (
 	"operator/pkg/resourcehandler"
 )
 
-var (
-	urlHandler = map[string]fn{
-		"nodeList": nodeListHandler,
-		"menu":     menuHandler,
-	}
-)
-
-type fn func(w http.ResponseWriter, r *http.Request)
-
 const (
 	//port to run webserver for quobyte-operator
 	port string = ":7878"
@@ -32,11 +23,6 @@ func nodeListHandler(w http.ResponseWriter, r *http.Request) {
 
 func menuHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "hello menu")
-}
-
-func getHandlerFunc(path string) fn {
-	v := urlHandler[path]
-	return v
 }
 
 //StartWebServer Starts webserver on port
