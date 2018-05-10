@@ -18,7 +18,7 @@ kubectl create -f deploy/quobyte-ns.yaml
 ```
 Quobyte runs best with 3 replicas of the registry, where we require 1 bootstrapped registry. To make the setup as easy as possible, we defined an ephemeral registry, which is used to bootstrap the cluster. The final cluster will have registry devices on nodes 2, 3, and 4, so we will use `node1` for bootstrap.
 
-The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and allows to fine tune the memory limits for the services. Edit the file to point to your bootstrap registry.
+The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and allows to fine tune the memory limits for the services. Copy `quobyte-config.yaml.tmp` to `quobyte-config.yaml` and edit the file to point to your bootstrap registry.
 
 ```yaml
   registry.bootstrap_node: "node1"
@@ -26,7 +26,6 @@ The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and a
 
 Now install the operator to the quobyte namespace.
 ```bash
-cp quobyte-config.yaml.tmp quobyte-config.yaml
 kubectl -n quobyte create -f deploy/quobyte-config.yaml
 kubectl -n quobyte create -f deploy/operator.yaml
 ```
