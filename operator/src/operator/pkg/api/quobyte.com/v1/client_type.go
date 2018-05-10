@@ -15,7 +15,7 @@ type QuobyteClient struct {
 	Spec QuobyteClientSpec `json:",spec"`
 }
 
-// QclientSpec contains spec for quobyte client resource.
+// QuobyteClientSpec contains spec for quobyte client resource.
 type QuobyteClientSpec struct {
 	Nodes   []string `json:"nodes"`
 	Version string   `json:"version"`
@@ -29,7 +29,7 @@ type QuobyteClientSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// QclientList is list of quobyteclients
+// QuobyteClientList is list of quobyteclients
 type QuobyteClientList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
