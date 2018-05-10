@@ -1,0 +1,14 @@
+apiVersion: quobyte.com/v1
+kind: QuobyteClient
+metadata:
+  name: quobyte-client
+  namespace: quobyte
+spec:
+    image: quay.io/quobyte/quobyte-client:2
+    # rolling updates are experimental
+    rolling_updates_enabled: false
+    nodes:
+      - fluffy-kube-node-0
+      - fluffy-kube-node-1
+      - fluffy-kube-node-2
+      - fluffy-kube-node-3
