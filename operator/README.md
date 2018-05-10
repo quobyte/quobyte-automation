@@ -215,7 +215,7 @@ desired hosts.
 If you add or remove clients, edit the client-config.yaml and update it with
 
 ```
-kubectl -n quobyte apply -f deploy/-config.yaml
+kubectl -n quobyte apply -f deploy/client-config.yaml
 ```
 
 When the clients are ready, you can start using Quobyte volumes in your pods.
