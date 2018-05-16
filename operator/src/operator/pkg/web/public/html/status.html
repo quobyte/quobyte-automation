@@ -1,6 +1,6 @@
 <div>
-    {{ if .ClientPending}}
     <b>Clients Status:</b></br>
+    {{ if .ClientPending}}
        {{ range .ClientPending}}
             Node: {{ .Node}} </br>
             &nbsp;Pod: {{.Pod}}  </br>
@@ -13,16 +13,21 @@
             {{end}}
             {{end}}
         {{end}}
-        {{end}}
+    {{else}}
+    &nbsp; All Quobyte clients are up-to-date.</br>     
+    {{end}}
+    <b>Registry Service Status:</b></br>
         {{ if .RegistryPending}}
-        <b>Registry Status:</b></br>
         {{ range .RegistryPending}}
             Node: {{ .Node}} </br>
             &nbsp;Pod: {{.Pod}}  </br>
             &nbsp;Expected Image: {{.ExpectedImage}} </br>
             &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
         {{end}}
+        {{else}}
+        &nbsp; All Quobyte registrie services are up-to-date.</br>     
         {{end}}
+        <b>Data Service Status:</b></br>
         {{ if .DataPending}}
         {{ range .DataPending}}
             Node: {{ .Node}} </br>
@@ -30,7 +35,10 @@
             &nbsp;Expected Image: {{.ExpectedImage}} </br>
             &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
         {{end}}
+        {{else}}
+        &nbsp; All Quobyte data services are up-to-date.  </br>   
         {{end}}
+        <b>Metadata Service Status:</b></br>
         {{ if .MetadataPending}}
         {{ range .MetadataPending}}
             Node: {{ .Node}} </br>
@@ -38,6 +46,7 @@
             &nbsp;Expected Image: {{.ExpectedImage}} </br>
             &nbsp;Current Image:&nbsp;&nbsp; {{.CurrentImage}} </br>
         {{end}}
+        {{else}}
+        &nbsp; All Quobyte metadata services are up-to-date.  </br>   
         {{end}}
-   </div>
-   <div><input type="button" value="Status JSON"/></div>
+   </div>  

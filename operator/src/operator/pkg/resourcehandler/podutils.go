@@ -74,6 +74,8 @@ func ControlledPodUpdate(role, image string, update bool) ([]byte,error) {
 		if pod.Spec.Containers[0].Image == image {
 			glog.Infof("%s pod already has the requsted image %s", pod.Name, image)
 			continue
+		}else{
+			glog.Infof("%s pod running with different version",pod.Name)
 		}
 		var client bool
 		if role == "client" {
@@ -81,9 +83,9 @@ func ControlledPodUpdate(role, image string, update bool) ([]byte,error) {
 			clientOnHoldPods := checkQuobyteVolumeMounts(pod, image,update)
 			if clientOnHoldPods != nil {
 				ClientStatus = append(ClientStatus, clientOnHoldPods)
-				fmt.Printf("pods with QB volumes %v\n", clientOnHoldPods)
 				continue
-			} else if len(failureMessage) > 0 { // if alread a client failed then don't proceed to upgrade
+			} 
+			if !update { // if alread a client failed then don't proceed to upgrade
 				ClientStatus = append(ClientStatus, &ClientUpdateOnHold{pod.Spec.NodeName, pod.Name, image, pod.Spec.Containers[0].Image, nil})
 				continue
 			}

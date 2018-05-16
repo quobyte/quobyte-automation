@@ -238,16 +238,10 @@ func handleServicesAdd(obj interface{}) {
 	keepServiceNodesInSync(registry.Nodes, data.Nodes, metadata.Nodes)
 }
 
-// QueryPodsUpToDateness writes the status to <service>-status.json file under /public/
-// func QueryPodsUpToDateness(K8sAPIClient *kubernetes.Clientset) {
-// 	resourcehandler.KubernetesClient = K8sAPIClient
-// 	queryClientPodUpToDateness()
-// 	queryServicesPodUpToDateness()
-// }
 type OperatorStatus struct {
 	ClientPending   []resourcehandler.ClientUpdateOnHold `json:"clientPending,omitempty"`
 	RegistryPending []resourcehandler.ServiceNotUpdated  `json:"registryPending,omitempty"`
-	MetaDataPending []resourcehandler.ServiceNotUpdated  `json:"metadataPending,omitempty"`
+	MetadataPending []resourcehandler.ServiceNotUpdated  `json:"metadataPending,omitempty"`
 	DataPending     []resourcehandler.ServiceNotUpdated  `json:"dataPending,omitempty"`
 }
 
@@ -256,26 +250,24 @@ func GetStatus(K8sAPIClient *kubernetes.Clientset) *OperatorStatus {
 	resourcehandler.KubernetesClient = K8sAPIClient
 	var status OperatorStatus
 	clientStatus, _ := queryPodUpToDateness(utils.ClientService)
-	err := json.Unmarshal(clientStatus,&status.ClientPending)
-	if err !=nil {
-		glog.Errorf("Unable to convert client status to JSON")
-	}
+	appendStatus(clientStatus,&status.ClientPending)
 	registryStatus, _ :=queryPodUpToDateness(utils.RegistryService)
-	err = json.Unmarshal(registryStatus,&status.RegistryPending)
-	if err !=nil {
-		glog.Errorf("Unable to convert registry status to JSON")
-	}
+	appendStatus(registryStatus,&status.RegistryPending)
 	dataStatus, _ :=queryPodUpToDateness(utils.DataService)
-	err = json.Unmarshal(dataStatus,&status.DataPending)
-	if err !=nil {
-		glog.Errorf("Unable to convert data status to JSON")
-	}
+	appendStatus(dataStatus,&status.DataPending)
 	metadataStatus, _ :=queryPodUpToDateness(utils.MetadataService)
-	err = json.Unmarshal(metadataStatus,&status.MetaDataPending)
-	if err !=nil {
-		glog.Errorf("Unable to convert metadata status to JSON")
-	}
+	appendStatus(metadataStatus,&status.MetadataPending)
 	return &status
+}
+
+func appendStatus(statusVal []byte, status interface{}){
+	if statusVal ==nil {
+		return
+	}
+	err := json.Unmarshal(statusVal,status)
+	if err !=nil {
+		glog.Errorf("Unable to convert status to JSON due %v",err)
+	}
 }
 
 func queryPodUpToDateness(service string) ([]byte,error) {
