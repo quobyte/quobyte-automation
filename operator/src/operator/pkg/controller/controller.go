@@ -250,6 +250,8 @@ type OperatorStatus struct {
 	MetaDataPending []resourcehandler.ServiceNotUpdated  `json:"metadataPending,omitempty"`
 	DataPending     []resourcehandler.ServiceNotUpdated  `json:"dataPending,omitempty"`
 }
+
+// GetStatus Gives the Json of pods that are not update as specified in the quobyte config
 func GetStatus(K8sAPIClient *kubernetes.Clientset) *OperatorStatus {
 	resourcehandler.KubernetesClient = K8sAPIClient
 	var status OperatorStatus
@@ -275,17 +277,6 @@ func GetStatus(K8sAPIClient *kubernetes.Clientset) *OperatorStatus {
 	}
 	return &status
 }
-
-
-// func queryServicesPodUpToDateness() {
-// 	queryPodUpToDateness(utils.RegistryService)
-// 	queryPodUpToDateness(utils.DataService)
-// 	queryPodUpToDateness(utils.MetadataService)
-// }
-
-// func queryClientPodUpToDateness() {
-// 	queryPodUpToDateness(utils.ClientService)
-// }
 
 func queryPodUpToDateness(service string) ([]byte,error) {
 	ds, err := resourcehandler.GetDaemonsetByName(service)
@@ -381,7 +372,6 @@ func handleServicesCRUpdate(old, cur interface{}) {
 		}
 	}
 	keepServiceNodesInSync(newRegistry.Nodes, newData.Nodes, newMetadata.Nodes)
-	// queryServicesPodUpToDateness()
 }
 
 func printManualUpdateMessage(svc string) {

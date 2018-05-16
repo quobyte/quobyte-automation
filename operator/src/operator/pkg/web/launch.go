@@ -30,13 +30,6 @@ var (
 	menuPage = ""
 )
 
-type OperatorStatus struct {
-	ClientPending   []resourcehandler.ClientUpdateOnHold `json:"clientPending,omitempty"`
-	RegistryPending []resourcehandler.ServiceNotUpdated  `json:"registryPending,omitempty"`
-	MetaDataPending []resourcehandler.ServiceNotUpdated  `json:"metadataPending,omitempty"`
-	DataPending     []resourcehandler.ServiceNotUpdated  `json:"dataPending,omitempty"`
-}
-
 type QuobyeDeployedService struct {
 	NodeName string
 	Pods     *v1.PodList
@@ -98,7 +91,6 @@ func clientsHandler(w http.ResponseWriter, r *http.Request) {
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	cleanCacheFiles()
-	// controller.QueryPodsUpToDateness(K8sAPIClient)
 	tmpl := template.Must(template.ParseFiles("/public/html/status.html"))
 	tmpl.Execute(w, controller.GetStatus(K8sAPIClient))
 }
@@ -162,10 +154,9 @@ func StartWebServer(apiClient *kubernetes.Clientset) {
 	K8sAPIClient = apiClient
 	glog.Infof("Starting server on port: %s", port)
 	http.HandleFunc("/", menuHandler)
-	// http.HandleFunc("/Get JSON", getStatusJSON)
 	for url, handleFn := range urlHandler {
 		http.HandleFunc("/"+url, handleFn)
 	}
-	http.HandleFunc("/Status JSON", getStatusJSON)
+	http.HandleFunc("/StatusJSON", getStatusJSON)
 	http.ListenAndServe(port, nil)
 }
