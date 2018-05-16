@@ -239,32 +239,65 @@ func handleServicesAdd(obj interface{}) {
 }
 
 // QueryPodsUpToDateness writes the status to <service>-status.json file under /public/
-func QueryPodsUpToDateness(K8sAPIClient *kubernetes.Clientset) {
+// func QueryPodsUpToDateness(K8sAPIClient *kubernetes.Clientset) {
+// 	resourcehandler.KubernetesClient = K8sAPIClient
+// 	queryClientPodUpToDateness()
+// 	queryServicesPodUpToDateness()
+// }
+type OperatorStatus struct {
+	ClientPending   []resourcehandler.ClientUpdateOnHold `json:"clientPending,omitempty"`
+	RegistryPending []resourcehandler.ServiceNotUpdated  `json:"registryPending,omitempty"`
+	MetaDataPending []resourcehandler.ServiceNotUpdated  `json:"metadataPending,omitempty"`
+	DataPending     []resourcehandler.ServiceNotUpdated  `json:"dataPending,omitempty"`
+}
+func GetStatus(K8sAPIClient *kubernetes.Clientset) *OperatorStatus {
 	resourcehandler.KubernetesClient = K8sAPIClient
-	queryClientPodUpToDateness()
-	queryServicesPodUpToDateness()
+	var status OperatorStatus
+	clientStatus, _ := queryPodUpToDateness(utils.ClientService)
+	err := json.Unmarshal(clientStatus,&status.ClientPending)
+	if err !=nil {
+		glog.Errorf("Unable to convert client status to JSON")
+	}
+	registryStatus, _ :=queryPodUpToDateness(utils.RegistryService)
+	err = json.Unmarshal(registryStatus,&status.RegistryPending)
+	if err !=nil {
+		glog.Errorf("Unable to convert registry status to JSON")
+	}
+	dataStatus, _ :=queryPodUpToDateness(utils.DataService)
+	err = json.Unmarshal(dataStatus,&status.DataPending)
+	if err !=nil {
+		glog.Errorf("Unable to convert data status to JSON")
+	}
+	metadataStatus, _ :=queryPodUpToDateness(utils.MetadataService)
+	err = json.Unmarshal(metadataStatus,&status.MetaDataPending)
+	if err !=nil {
+		glog.Errorf("Unable to convert metadata status to JSON")
+	}
+	return &status
 }
 
-func queryServicesPodUpToDateness() {
-	queryPodUpToDateness(utils.RegistryService)
-	queryPodUpToDateness(utils.DataService)
-	queryPodUpToDateness(utils.MetadataService)
-}
 
-func queryClientPodUpToDateness() {
-	queryPodUpToDateness(utils.ClientService)
-}
+// func queryServicesPodUpToDateness() {
+// 	queryPodUpToDateness(utils.RegistryService)
+// 	queryPodUpToDateness(utils.DataService)
+// 	queryPodUpToDateness(utils.MetadataService)
+// }
 
-func queryPodUpToDateness(service string) {
+// func queryClientPodUpToDateness() {
+// 	queryPodUpToDateness(utils.ClientService)
+// }
+
+func queryPodUpToDateness(service string) ([]byte,error) {
 	ds, err := resourcehandler.GetDaemonsetByName(service)
 	if err != nil {
 		glog.Errorf("Status update failure: Failed to get %s daemonset due to %v", service, err)
-		return
+		return nil,nil
 	}
 	// read non-update pods and show those in the status
 	if ds.Status.DesiredNumberScheduled != ds.Status.UpdatedNumberScheduled {
-		resourcehandler.ControlledPodUpdate(service, ds.Spec.Template.Spec.Containers[0].Image, false)
+		return resourcehandler.ControlledPodUpdate(service, ds.Spec.Template.Spec.Containers[0].Image, false)
 	}
+	return nil,nil
 }
 
 func syncQuobyteVersion(dsName, image string) {

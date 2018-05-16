@@ -76,7 +76,7 @@ func registryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStatusJSON(w http.ResponseWriter, r *http.Request) {
-	service := getStatus()
+	service := controller.GetStatus(K8sAPIClient)
 	json, _ := json.Marshal(service)
 	fmt.Fprintf(w, string(json))
 }
@@ -98,9 +98,9 @@ func clientsHandler(w http.ResponseWriter, r *http.Request) {
 
 func statusHandler(w http.ResponseWriter, r *http.Request) {
 	cleanCacheFiles()
-	controller.QueryPodsUpToDateness(K8sAPIClient)
+	// controller.QueryPodsUpToDateness(K8sAPIClient)
 	tmpl := template.Must(template.ParseFiles("/public/html/status.html"))
-	tmpl.Execute(w, getStatus())
+	tmpl.Execute(w, controller.GetStatus(K8sAPIClient))
 }
 
 func cleanCacheFiles() {
@@ -108,25 +108,6 @@ func cleanCacheFiles() {
 	os.Remove(utils.REGISTRY_STATUS_FILE)
 	os.Remove(utils.DATA_STATUS_FILE)
 	os.Remove(utils.METADATA_STATUS_FILE)
-}
-
-func getStatus() *OperatorStatus {
-	raw, err := ioutil.ReadFile(utils.CLIENT_STATUS_FILE)
-	var clientStatus []resourcehandler.ClientUpdateOnHold
-	if err != nil {
-		glog.Errorf("Failed reading status file %v", err)
-		clientStatus = nil
-	} else {
-		err = json.Unmarshal(raw, &clientStatus)
-		if err != nil {
-			fmt.Printf("Unable to get the current client status")
-			glog.Errorf("%v", err)
-
-		}
-	}
-
-	return &OperatorStatus{clientStatus, loadServiceStatus(utils.REGISTRY_STATUS_FILE), loadServiceStatus(utils.METADATA_STATUS_FILE), loadServiceStatus(utils.DATA_STATUS_FILE)}
-
 }
 
 func loadServiceStatus(file string) []resourcehandler.ServiceNotUpdated {

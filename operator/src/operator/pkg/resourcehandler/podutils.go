@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"operator/pkg/utils"
+	// "operator/pkg/utils"
 	"strings"
 	"time"
 
@@ -37,6 +37,7 @@ type ServiceNotUpdated struct {
 	CurrentImage  string
 }
 
+
 // GetPodsWithSelector gives pods with specified selector. The selector must be valid label selector supported by API.
 func GetPodsWithSelector(selector string) (podlist *v1.PodList) {
 	podlist, err := KubernetesClient.CoreV1().Pods(quobyteNameSpace).List(metav1.ListOptions{LabelSelector: selector})
@@ -64,7 +65,7 @@ func DeletePods(selector string) {
 // Currently, this method checks pod recreation on node 5 times with each try dealyed by 60 secs.
 // If Pod not running within 5 tries past the Pending pod status, this reports Failure and exits update process.
 // TODO: Refactor this method.
-func ControlledPodUpdate(role, image string, update bool) {
+func ControlledPodUpdate(role, image string, update bool) ([]byte,error) {
 	podList := GetPodsWithSelector(fmt.Sprintf("role=%s", role))
 	ClientStatus := make([]*ClientUpdateOnHold, 0, len(podList.Items))
 	serviceStatus := make([]*ServiceNotUpdated, 0, len(podList.Items))
@@ -146,16 +147,19 @@ func ControlledPodUpdate(role, image string, update bool) {
 			outStanding, err := json.Marshal(ClientStatus)
 			if err != nil {
 				glog.Errorf("Failed converting outstanding clients to JSON: %v", err)
+				return nil,err
 			}
-			// fmt.Printf("current status of the client updates: %v ", string(outStanding))
-			err = ioutil.WriteFile(utils.CLIENT_STATUS_FILE, outStanding, 0644)
-			if err != nil {
-				glog.Errorf("Failed writing status to file %v", err)
-			}
-		} else {
-			saveServiceStatus(serviceStatus, role)
+			return outStanding,nil
+		} 
+		// if service return service status
+		outStanding, err := json.Marshal(serviceStatus)
+		if err != nil {
+			glog.Errorf("Failed converting outstanding %ss to JSON: %v",role, err)
+			return nil,err
 		}
+		return outStanding,nil
 	}
+	return nil,nil
 }
 
 func saveServiceStatus(status []*ServiceNotUpdated, role string) {
