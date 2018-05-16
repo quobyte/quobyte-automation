@@ -77,7 +77,7 @@ func ControlledPodUpdate(role, image string, update bool) {
 		var client bool
 		if role == "client" {
 			client = true
-			clientOnHoldPods := checkQuobyteVolumeMounts(pod, image)
+			clientOnHoldPods := checkQuobyteVolumeMounts(pod, image,update)
 			if clientOnHoldPods != nil {
 				ClientStatus = append(ClientStatus, clientOnHoldPods)
 				fmt.Printf("pods with QB volumes %v\n", clientOnHoldPods)
@@ -170,14 +170,17 @@ func saveServiceStatus(status []*ServiceNotUpdated, role string) {
 	}
 }
 
-func checkQuobyteVolumeMounts(pod v1.Pod, image string) *ClientUpdateOnHold {
-
+func checkQuobyteVolumeMounts(pod v1.Pod, image string,update bool) *ClientUpdateOnHold {
+    if update{
 	// Don't let any pod schedule on this node temporarily.
 	AddUpgradeTaint(pod.Spec.NodeName)
+	}
 	lblSelector := "role  notin (registry,client,data,metadata,data,qmgmt-pod,webconsole)"
 	pods, err := KubernetesClient.CoreV1().Pods("").List(metav1.ListOptions{LabelSelector: lblSelector, FieldSelector: fmt.Sprintf("spec.nodeName=%s", pod.Spec.NodeName)})
 	if err != nil {
-		RemoveUpgradeTaint(pod.Spec.NodeName)
+		if update {
+			RemoveUpgradeTaint(pod.Spec.NodeName)
+		}
 		message := fmt.Sprintf("Skipping client update. Cannot check the pods accessing Quobyte volume. Failed to get the pods on %s due to %v", pod.Spec.NodeName, err)
 		glog.Error(message)
 		return &ClientUpdateOnHold{pod.Spec.NodeName, pod.Name, image, pod.Spec.Containers[0].Image, nil}
@@ -208,7 +211,9 @@ func checkQuobyteVolumeMounts(pod v1.Pod, image string) *ClientUpdateOnHold {
 			}
 		}
 	}
-	RemoveUpgradeTaint(pod.Spec.NodeName)
+	if update{
+		RemoveUpgradeTaint(pod.Spec.NodeName)
+	}
 	if len(QuobyteVolumePods) > 0 {
 		return &ClientUpdateOnHold{pod.Spec.NodeName, pod.Name, image, pod.Spec.Containers[0].Image, QuobyteVolumePods}
 	}

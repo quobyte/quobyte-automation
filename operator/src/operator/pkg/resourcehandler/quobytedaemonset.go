@@ -37,29 +37,6 @@ func GetDaemonsetByName(name string) (*extensionsv1beta1.DaemonSet, error) {
 	return KubernetesClient.ExtensionsV1beta1().DaemonSets(quobyteNameSpace).Get(name, metav1.GetOptions{})
 }
 
-// // GetClientPodsByVersion returns client pods with specified version.
-// func GetClientPodsByVersion(version string) (podlist *v1.PodList) {
-// 	podlist, err := KubernetesClient.CoreV1().Pods(quobyteNameSpace).List(metav1.ListOptions{LabelSelector: fmt.Sprintf("version=%s,role=client", version)})
-// 	if err != nil {
-// 		glog.Errorf("Failed to get pods with version %s due to %v", version, err)
-// 		return nil
-// 	}
-// 	return
-// }
-
-// // DeleteClientPods deletes Quobyte client pods with given version.
-// func DeleteClientPods(version string) {
-// 	list := GetClientPodsByVersion(version)
-// 	if list != nil {
-// 		for _, pod := range list.Items {
-// 			err := KubernetesClient.CoreV1().Pods(quobyteNameSpace).Delete(pod.Name, &metav1.DeleteOptions{})
-// 			if err != nil {
-// 				glog.Errorf("Failed to delete pod %s due to %v", pod.Name, err)
-// 			}
-// 		}
-// 	}
-// }
-
 // UpdateDaemonSet updates daemonset, with ondelete rolling update strategy and given version.
 func UpdateDaemonSet(daemonsetname string, image string) error {
 

@@ -23,6 +23,7 @@ import (
 	"operator/pkg/api/quobyte.com/v1"
 )
 
+
 type controller struct {
 	clientinformer   cache.SharedIndexInformer
 	servicesInformer cache.SharedIndexInformer
@@ -77,9 +78,9 @@ func newQuobyteClientController(quobyteclient *quobytev1.Clientset) (*controller
 }
 
 func handleClientCRAdd(obj interface{}) {
-	syncQuobyteVersion("client", obj.(*v1.QuobyteClient).Spec.Image)
-	resourcehandler.LabelNodes(obj.(*v1.QuobyteClient).Spec.Nodes, "add", "quobyte_client")
-	removeNonConfirmingCRNodes(obj.(*v1.QuobyteClient).Spec.Nodes, "quobyte_client")
+	syncQuobyteVersion(utils.ClientService, obj.(*v1.QuobyteClient).Spec.Image)
+	resourcehandler.LabelNodes(obj.(*v1.QuobyteClient).Spec.Nodes, utils.OperationAdd, utils.ClientLabelKey)
+	removeNonConfirmingCRNodes(obj.(*v1.QuobyteClient).Spec.Nodes, utils.ClientLabelKey)
 	// queryClientPodUpToDateness()
 }
 
@@ -98,16 +99,16 @@ func removeNonConfirmingCRNodes(crNodes []string, labelVal string) {
 		_, ok := crNode[node.Name]
 		if !ok {
 			glog.Infof("Removing node %s from %s services as the node is not part of the Quobyte Configuration. To deploy, update the required quobyte definition (clients/services) with node.", node.Name, strings.Title(strings.Replace(labelVal, "_", " ", -1)))
-			resourcehandler.LabelNodes([]string{node.Name}, "remove", labelVal)
+			resourcehandler.LabelNodes([]string{node.Name}, utils.OperationRemove, labelVal)
 		}
 	}
 }
 
 func handleClientCRDelete(definition interface{}) {
-	resourcehandler.LabelNodes(definition.(*v1.QuobyteClient).Spec.Nodes, "remove", "quobyte_client")
+	resourcehandler.LabelNodes(definition.(*v1.QuobyteClient).Spec.Nodes, utils.OperationRemove,utils.ClientLabelKey)
 	resourcehandler.DeletePods("role=client")
 	glog.Info("Removed Quobyte client definition (Pod termination signalled)")
-	removeNonConfirmingCRNodes(definition.(*v1.QuobyteClient).Spec.Nodes, "quobyte_client")
+	removeNonConfirmingCRNodes(definition.(*v1.QuobyteClient).Spec.Nodes, utils.ClientLabelKey)
 }
 
 func handleClientCRUpdate(old, cur interface{}) {
@@ -117,24 +118,24 @@ func handleClientCRUpdate(old, cur interface{}) {
 	glog.Info("QuobyteClient CR updated: Updating Quobyte to the updated template.")
 
 	if !reflect.DeepEqual(oldCr.Spec.Nodes, curCr.Spec.Nodes) {
-		handleNodeChanges(oldCr, curCr, oldCr.Spec.Nodes, curCr.Spec.Nodes, "quobyte_client")
+		handleNodeChanges(oldCr, curCr, oldCr.Spec.Nodes, curCr.Spec.Nodes, utils.ClientLabelKey)
 	}
 
 	if oldCr.Spec.Image != curCr.Spec.Image {
 		glog.Infof("Client Image changed from %s to %s", oldCr.Spec.Image, curCr.Spec.Image)
-		err := resourcehandler.UpdateDaemonSet("client", curCr.Spec.Image) // TODO: get dynamic name
+		err := resourcehandler.UpdateDaemonSet(utils.ClientService, curCr.Spec.Image) // TODO: get dynamic name
 
 		if err != nil {
 			glog.Errorf("Failed to update client daemonset with updated image %s\n", curCr.Spec.Image)
 		}
 		if curCr.Spec.RollingUpdate {
 			// podSelector := fmt.Sprintf("version=%s,role=client", resourcehandler.GetVersionFromString(oldCr.Spec.Image))
-			resourcehandler.ControlledPodUpdate("client", curCr.Spec.Image, true)
+			resourcehandler.ControlledPodUpdate(utils.ClientService, curCr.Spec.Image, true)
 		} else {
-			printManualUpdateMessage("client")
+			printManualUpdateMessage(utils.ClientService)
 		}
 	}
-	removeNonConfirmingCRNodes(curCr.Spec.Nodes, "quobyte_client")
+	removeNonConfirmingCRNodes(curCr.Spec.Nodes, utils.ClientLabelKey)
 	// queryClientPodUpToDateness()
 }
 
@@ -160,12 +161,12 @@ func handleNodeChanges(oldCr, curCr interface{}, oldNodes, curNodes []string, la
 	addedNodes := make([]string, 0, len(curNodes))   // at most, only nodes in current definition must have been added.
 	for _, operation := range patch {
 		if strings.Contains(strings.ToLower(operation.Path), nodesPath) {
-			if operation.Operation == "remove" {
+			if operation.Operation == utils.OperationRemove {
 				//get the removed node index, so that we don't remove/modify the unexpected node.
 				index, _ := strconv.Atoi(operation.Path[strings.Index(strings.ToLower(operation.Path), nodesPath)+len(nodesPath) : len(operation.Path)])
 				removedNode := oldNodes[index]
 				removedNodes = append(removedNodes, removedNode)
-			} else if operation.Operation == "add" {
+			} else if operation.Operation == utils.OperationAdd {
 				addedNodes = append(addedNodes, operation.Value.(string))
 			} else if operation.Operation == "replace" {
 				// remove old node and add new node
@@ -178,11 +179,11 @@ func handleNodeChanges(oldCr, curCr interface{}, oldNodes, curNodes []string, la
 	}
 	if len(removedNodes) > 0 {
 		glog.Infof("Removed nodes:%s", removedNodes)
-		resourcehandler.LabelNodes(removedNodes, "remove", label)
+		resourcehandler.LabelNodes(removedNodes, utils.OperationRemove, label)
 	}
 	if len(addedNodes) > 0 {
 		glog.Infof("Added nodes:%s", addedNodes)
-		resourcehandler.LabelNodes(addedNodes, "add", label)
+		resourcehandler.LabelNodes(addedNodes, utils.OperationAdd, label)
 	}
 }
 
@@ -218,9 +219,9 @@ func Start(quobyteclient *quobytev1.Clientset) {
 }
 
 func keepServiceNodesInSync(regstryNodes, dataNodes, metaNodes []string) {
-	removeNonConfirmingCRNodes(regstryNodes, "quobyte_registry")
-	removeNonConfirmingCRNodes(dataNodes, "quobyte_data")
-	removeNonConfirmingCRNodes(metaNodes, "quobyte_metadata")
+	removeNonConfirmingCRNodes(regstryNodes,  utils.RegistryLabelKey)
+	removeNonConfirmingCRNodes(dataNodes, utils.DataLabelKey)
+	removeNonConfirmingCRNodes(metaNodes, utils.MetadataLabelKey)
 }
 
 func handleServicesAdd(obj interface{}) {
@@ -228,15 +229,16 @@ func handleServicesAdd(obj interface{}) {
 	data := obj.(*v1.QuobyteService).Spec.DataService
 	metadata := obj.(*v1.QuobyteService).Spec.MetadataService
 	// api := obj.(*v1.QuobyteService).Spec.APIService
-	syncQuobyteVersion("registry", registry.Image)
-	syncQuobyteVersion("data", data.Image)
-	syncQuobyteVersion("metadata", metadata.Image)
-	resourcehandler.LabelNodes(registry.Nodes, "add", "quobyte_registry")
-	resourcehandler.LabelNodes(data.Nodes, "add", "quobyte_data")
-	resourcehandler.LabelNodes(metadata.Nodes, "add", "quobyte_metadata")
+	syncQuobyteVersion(utils.RegistryService, registry.Image)
+	syncQuobyteVersion(utils.DataService, data.Image)
+	syncQuobyteVersion(utils.MetadataService, metadata.Image)
+	resourcehandler.LabelNodes(registry.Nodes, utils.OperationAdd, utils.RegistryLabelKey)
+	resourcehandler.LabelNodes(data.Nodes, utils.OperationAdd, utils.DataLabelKey)
+	resourcehandler.LabelNodes(metadata.Nodes, utils.OperationAdd, utils.MetadataLabelKey)
 	keepServiceNodesInSync(registry.Nodes, data.Nodes, metadata.Nodes)
 }
 
+// QueryPodsUpToDateness writes the status to <service>-status.json file under /public/
 func QueryPodsUpToDateness(K8sAPIClient *kubernetes.Clientset) {
 	resourcehandler.KubernetesClient = K8sAPIClient
 	queryClientPodUpToDateness()
@@ -244,13 +246,13 @@ func QueryPodsUpToDateness(K8sAPIClient *kubernetes.Clientset) {
 }
 
 func queryServicesPodUpToDateness() {
-	queryPodUpToDateness("registry")
-	queryPodUpToDateness("data")
-	queryPodUpToDateness("metadata")
+	queryPodUpToDateness(utils.RegistryService)
+	queryPodUpToDateness(utils.DataService)
+	queryPodUpToDateness(utils.MetadataService)
 }
 
 func queryClientPodUpToDateness() {
-	queryPodUpToDateness("client")
+	queryPodUpToDateness(utils.ClientService)
 }
 
 func queryPodUpToDateness(service string) {
@@ -259,6 +261,7 @@ func queryPodUpToDateness(service string) {
 		glog.Errorf("Status update failure: Failed to get %s daemonset due to %v", service, err)
 		return
 	}
+	// read non-update pods and show those in the status
 	if ds.Status.DesiredNumberScheduled != ds.Status.UpdatedNumberScheduled {
 		resourcehandler.ControlledPodUpdate(service, ds.Spec.Template.Spec.Containers[0].Image, false)
 	}
@@ -302,22 +305,22 @@ func handleServicesCRUpdate(old, cur interface{}) {
 
 		if !reflect.DeepEqual(oldRegistry.Nodes, newRegistry.Nodes) {
 			glog.Infof("Registry nodes changed: old %v and new %v", oldRegistry.Nodes, newRegistry.Nodes)
-			handleNodeChanges(oldCr, curCr, oldRegistry.Nodes, newRegistry.Nodes, "quobyte_registry")
+			handleNodeChanges(oldCr, curCr, oldRegistry.Nodes, newRegistry.Nodes, utils.RegistryLabelKey)
 		}
 
 		if !reflect.DeepEqual(oldData.Nodes, newData.Nodes) {
 			glog.Infof("Data service nodes changed: old %v and new %v", oldData.Nodes, newData.Nodes)
-			handleNodeChanges(oldCr, curCr, oldData.Nodes, newData.Nodes, "quobyte_data")
+			handleNodeChanges(oldCr, curCr, oldData.Nodes, newData.Nodes, utils.DataLabelKey)
 		}
 
 		if !reflect.DeepEqual(oldMetadata.Nodes, newMetadata.Nodes) {
 			glog.Infof("Metadata service nodes changed: old %v and new %v", oldMetadata.Nodes, newMetadata.Nodes)
-			handleNodeChanges(oldCr, curCr, oldMetadata.Nodes, newMetadata.Nodes, "quobyte_metadata")
+			handleNodeChanges(oldCr, curCr, oldMetadata.Nodes, newMetadata.Nodes, utils.MetadataLabelKey)
 		}
 
 		// TODO : update node by node. currently service by service
 		if oldRegistry.Image != newRegistry.Image {
-			svc := "registry"
+			svc := utils.RegistryService
 			updateDSVersion(svc, newRegistry.Image)
 			if newRegistry.RollingUpdate {
 				resourcehandler.ControlledPodUpdate(svc, newRegistry.Image, true)
@@ -326,7 +329,7 @@ func handleServicesCRUpdate(old, cur interface{}) {
 			}
 		}
 		if oldData.Image != newData.Image {
-			svc := "data"
+			svc := utils.DataService
 			updateDSVersion(svc, newData.Image)
 			if newData.RollingUpdate {
 				resourcehandler.ControlledPodUpdate(svc, newData.Image, true)
@@ -335,7 +338,7 @@ func handleServicesCRUpdate(old, cur interface{}) {
 			}
 		}
 		if oldMetadata.Image != newMetadata.Image {
-			svc := "metadata"
+			svc := utils.MetadataService
 			updateDSVersion(svc, newMetadata.Image)
 			if newMetadata.RollingUpdate {
 				resourcehandler.ControlledPodUpdate(svc, newMetadata.Image, true)
@@ -357,17 +360,12 @@ func handleServicesCRDelete(definition interface{}) {
 	regNodes := servicesSpec.RegistryService.Nodes
 	dataNodes := servicesSpec.DataService.Nodes
 	metaNodes := servicesSpec.MetadataService.Nodes
-	resourcehandler.LabelNodes(regNodes, "remove", "quobyte_registry")
-	resourcehandler.LabelNodes(dataNodes, "remove", "quobyte_data")
-	resourcehandler.LabelNodes(metaNodes, "remove", "quobyte_metadata")
-	registrySelector := "role=registry"
-	dataSelector := "role=data"
-	metadataSelector := "role=metadata"
-	// apiSelector := fmt.Sprintf("version=%s,role=api", resourcehandler.GetVersionFromString(servicesSpec.APIService.Image))
-	// resourcehandler.DeletePods(apiSelector)
-	resourcehandler.DeletePods(dataSelector)
-	resourcehandler.DeletePods(metadataSelector)
-	resourcehandler.DeletePods(registrySelector)
+	resourcehandler.LabelNodes(regNodes, utils.OperationRemove, utils.RegistryLabelKey)
+	resourcehandler.LabelNodes(dataNodes, utils.OperationRemove,  utils.DataLabelKey)
+	resourcehandler.LabelNodes(metaNodes, utils.OperationRemove,  utils.MetadataLabelKey)
+	resourcehandler.DeletePods(utils.DataSelector)
+	resourcehandler.DeletePods(utils.MetadataSelector)
+	resourcehandler.DeletePods(utils.RegistrySelector)
 	keepServiceNodesInSync(regNodes, dataNodes, metaNodes)
 	glog.Info("Removed Quobyte service definition (Pod termination signalled)")
 }

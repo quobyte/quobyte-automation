@@ -19,9 +19,17 @@
         <script>
             $(document).ready(function(){
                 $("button").click(function(){
-                    $.ajax({url:"/"+$(this).val(),success:function(result){
-                        $("#content-div").html(result)
-                    }});
+                    $("#content-div").html("Loading..");
+                    $.ajax({
+                        url:"/"+$(this).val(),
+                        async: false,
+                        success:function(result){
+                            $("#content-div").html(result)
+                        },
+                        error: function(){
+                            $("#content-div").html("Request failed")
+                        }
+                    });
                 });
             });
         </script>

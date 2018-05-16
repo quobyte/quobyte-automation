@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/glog"
 	types "k8s.io/apimachinery/pkg/types"
+	"operator/pkg/utils"
 )
 
 // GetPods Returns all the pods in cluster
@@ -22,7 +23,6 @@ func GetPods(client *kubernetes.Clientset) (*v1.PodList, error) {
 
 // LabelNodes updates labels on nodes.
 // op add,remove
-
 func LabelNodes(labelNodes []string, op, label string) {
 
 	for _, nodeName := range labelNodes {
@@ -39,9 +39,9 @@ func LabelNodes(labelNodes []string, op, label string) {
 				labels = make(map[string]string)
 			}
 			switch op {
-			case "add":
+			case utils.OperationAdd:
 				labels[label] = "true"
-			case "remove":
+			case utils.OperationRemove:
 				delete(labels, label)
 			}
 			node.SetLabels(labels)

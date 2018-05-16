@@ -71,7 +71,7 @@ func deployedService(nodeLabel, selectorVal string) ([]*QuobyeDeployedService, e
 }
 
 func registryHandler(w http.ResponseWriter, r *http.Request) {
-	service, err := deployedService(REGISTRY_LABEL, "registry")
+	service, err := deployedService(REGISTRY_LABEL, utils.RegistryService)
 	handleNodeResponse(w, r, service, err)
 }
 
@@ -82,17 +82,17 @@ func getStatusJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func dataHandler(w http.ResponseWriter, r *http.Request) {
-	service, err := deployedService(DATA_LABEL, "data")
+	service, err := deployedService(DATA_LABEL, utils.DataService)
 	handleNodeResponse(w, r, service, err)
 }
 
 func metadataHandler(w http.ResponseWriter, r *http.Request) {
-	service, err := deployedService(METADATA_LABEL, "metadata")
+	service, err := deployedService(METADATA_LABEL, utils.MetadataService)
 	handleNodeResponse(w, r, service, err)
 }
 
 func clientsHandler(w http.ResponseWriter, r *http.Request) {
-	service, err := deployedService(CLIENT_LABEL, "client")
+	service, err := deployedService(CLIENT_LABEL, utils.ClientService)
 	handleNodeResponse(w, r, service, err)
 }
 
@@ -150,7 +150,6 @@ func handleNodeResponse(w http.ResponseWriter, r *http.Request, services []*Quob
 	if err != nil {
 		fmt.Fprintf(w, "Failed getting Quobyte nodes")
 		glog.Errorf("%v", err)
-		// TODO: log error
 		return
 	}
 	if len(services) == 0 {
