@@ -17,69 +17,17 @@ spec:
         role: client
         version: "2"
     spec:
-      #serviceAccountName: quobyteclientsrv
       containers:
       - name: quobyte-client
         image: quay.io/quobyte/quobyte-client:2
         imagePullPolicy: Always
-        # NOTE(kaisers): The weird if check before mkdir -p is required to not hang on a stale mount
-        command:
-          - /bin/sh
-          - -xec
-          - |
-            if [[ ! -f /etcfs/fuse.conf ]]; then
-              echo "Copy fuse config to host"
-              { echo -e '# Copied from Quobyte Client Container\n'; cat /etc/fuse.conf; } > /etcfs/fuse.conf
-            fi
-            if [[ $(grep "^[^#]" /etcfs/fuse.conf | grep -c "user_allow_other") -eq 0 ]]; then
-              echo "user_allow_other" >> /etcfs/fuse.conf
-            fi
-            if cut -d" " -f2 /etcfs/mtab | grep -q ${QUOBYTE_MOUNT_POINT}; then
-              umount ${QUOBYTE_MOUNT_POINT}
-            else
-              if ! [[ $(ls `dirname ${QUOBYTE_MOUNT_POINT}`|egrep "^`basename ${QUOBYTE_MOUNT_POINT}`$") ]]; then
-                echo "mount point ${QUOBYTE_MOUNT_POINT} does not exist, creating it..."
-                mkdir -p ${QUOBYTE_MOUNT_POINT}
-              fi
-            fi
-
-            # set the mount point immutable. As long as mount.quobyte does not run,
-            # other processes cannot write data to this dir.
-            chattr +i ${QUOBYTE_MOUNT_POINT}
-
-            # convert QUOBYTE_REGISTRY to IPs
-            # QUOBYTE_REGISTRY is a comma separated value of registry endpoints
-            # e.g., s1.example.com:5681,s2.example.com:5681,s3.example.com:5681
-            # or it can be a single value: s.example.com:5681
-            registry_ips=
-
-            IFS=','
-            for endpoint in $QUOBYTE_REGISTRY; do
-                name=$(echo $endpoint | awk '{split($0,a,":"); print a[1]}')
-                port=$(echo $endpoint | awk '{split($0,a,":"); print a[2]}')
-                ip=$(nslookup $name | grep $name -A2 | grep Address | cut -d':' -f2 | awk '{print $1}')
-                registry_ips="$ip:$port $registry_ips"
-            done
-            unset IFS
-
-            ADDR=$(echo $registry_ips | tr ' ' ',')
-            echo "QUOBYTE_REGISTRY: ${ADDR}"
-
-            /bin/nsenter -t 1 --wd=. -m -- \
-              lib/ld-linux-x86-64.so.2 \
-              --library-path ./lib \
-            ./bin/mount.quobyte --hostname ${NODENAME} --allow-usermapping-in-volumename \
-              --http-port 55000 -f -l /dev/stdout -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} \
-              ${ADDR}/ ${QUOBYTE_MOUNT_POINT}
-        securityContext:
-          privileged: true
         env:
           - name: QUOBYTE_CLIENT_LOG_LEVEL
             value: INFO
           - name: QUOBYTE_REGISTRY
             value: registry.quobyte
           - name: QUOBYTE_MOUNT_POINT
-            # Note(kaisers): the mount point has to be a subdir of the volume(Mount)
+            # Note that the mount point has to be a subdir of the volume(Mount)
             value: /var/lib/kubelet/plugins/kubernetes.io~quobyte
           - name: NODENAME
             valueFrom:
@@ -101,9 +49,56 @@ spec:
           httpGet:
             port: 55000
             path: /
+        command:
+          - /bin/sh
+          - -xec
+          - |
+            if [[ ! -f /etcfs/fuse.conf ]]; then
+              echo "Copy fuse config to host"
+              { echo -e '# Copied from Quobyte Client Container\n'; cat /etc/fuse.conf; } > /etcfs/fuse.conf
+            fi
+            if [[ $(grep "^[^#]" /etcfs/fuse.conf | grep -c "user_allow_other") -eq 0 ]]; then
+              echo "user_allow_other" >> /etcfs/fuse.conf
+            fi
+            if cut -d" " -f2 /etcfs/mtab | grep -q ${QUOBYTE_MOUNT_POINT}; then
+              echo "found existing mount point on host. Trying to umount ${QUOBYTE_MOUNT_POINT}"
+              /bin/nsenter -t 1 --wd=. -m -- lib/ld-linux-x86-64.so.2 --library-path ./lib ./bin/umount -f ${QUOBYTE_MOUNT_POINT}
+            else
+              if ! [[ $(ls `dirname ${QUOBYTE_MOUNT_POINT}`|egrep "^`basename ${QUOBYTE_MOUNT_POINT}`$") ]]; then
+                echo "mount point ${QUOBYTE_MOUNT_POINT} does not exist, creating it..."
+                mkdir -p ${QUOBYTE_MOUNT_POINT}
+              fi
+            fi
+
+            # set the mount point immutable. As long as mount.quobyte does not run,
+            # other processes cannot write data to this dir.
+            chattr +i ${QUOBYTE_MOUNT_POINT}
+
+            # Until k8s mountPropagation is stable, nsenter is used for the client
+            # to mount Quobyte into the host's mount namespace. By using nsenter, the client process
+            # will also use the host's dns resolve mechanisms, which most probably will not include
+            # the k8s internal name resolution. So the client is not able to resolve k8s internal 'registry.quobyte' anymore.
+            # Hence, for k8s internal Quobyte clusters, we need to pre-resolve the current ips, and let the client
+            # work with ips and not dns names.
+            if [ "$QUOBYTE_REGISTRY" == "registry" ] || [ "$QUOBYTE_REGISTRY" == "registry.quobyte" ] ; then
+              ADDR=$(echo $(nslookup ${QUOBYTE_REGISTRY} | grep -A10 -m1 -e 'Name:' | grep Address | awk '{split($0,a,":"); print a[2]}'  | awk '{print $1":7861"}') | tr ' ' ,)
+              echo "Assuming to connect to k8s hosted Quobyte cluster. Resolved DNS to: '$ADDR'"
+            else
+              ADDR=${QUOBYTE_REGISTRY}
+              echo "Assuming to connect to an external Quobyte cluster. Client will resolve DNS for: '$ADDR'"
+            fi
+
+            /bin/nsenter -t 1 --wd=. -m -- \
+              lib/ld-linux-x86-64.so.2 \
+              --library-path ./lib \
+            ./bin/mount.quobyte --hostname ${NODENAME} --allow-usermapping-in-volumename \
+              --http-port 55000 -f -l /dev/stdout -d ${QUOBYTE_CLIENT_LOG_LEVEL} ${OPTS} \
+              ${ADDR}/ ${QUOBYTE_MOUNT_POINT}
+        securityContext:
+          privileged: true
         volumeMounts:
           - name: k8s-plugin-dir
-            mountPath: /var/lib/kubelet/plugins/kubernetes.io~quobyte
+            mountPath: /var/lib/kubelet/plugins/
           - name: etcfs
             mountPath: /etcfs
         lifecycle:
@@ -116,7 +111,7 @@ spec:
       volumes:
       - name: k8s-plugin-dir
         hostPath:
-          path: /var/lib/kubelet/plugins/kubernetes.io~quobyte
+          path: /var/lib/kubelet/plugins/
       - name: etcfs
         hostPath:
           path: /etc

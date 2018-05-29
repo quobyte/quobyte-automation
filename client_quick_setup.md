@@ -20,7 +20,7 @@ $ systemctl daemon-reload && systemctl restart docker
 ```
 
 ## Client setup
-This guide assumes that you have a dedicated Quobyte instance running and you
+This guide assumes that you have a dedicated Quobyte server running and you
 want to provide access to Quobyte volumes to pods running in Kubernetes.
 
 To access a Quobyte volume a pod has to run on a Kubernetes node which has a
@@ -67,6 +67,10 @@ $ kubectl label nodes <node-1> <node-n> quobyte_client="true"
 
 When the client pod is up and running, you should see a mount point on the Kubernetes node
 at `/var/lib/kubelet/plugins/kubernetes.io~quobyte`.
+
+Please note: Only those nodes labeled with the 'quobyte_client' label and hence
+are running the Quobyte client can provide access to Quobyte storage to other pods
+running on the node.
 
 ##Benchmarking
 

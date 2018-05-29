@@ -11,6 +11,8 @@ spec:
     - ReadWriteOnce
   storageClassName: "base"
   quobyte:
+    # the registry parameter was an required parameter, but is not used anymore.
+    # It's here for API compatibility.
     registry: ignored:7861
     volume: test
     readOnly: false

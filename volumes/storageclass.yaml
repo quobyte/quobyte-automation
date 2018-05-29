@@ -11,6 +11,8 @@ parameters:
     user: "root"
     group: "root"
     quobyteConfig: "BASE"
-    quobyteTenant: "My Tenant"
+# For kubernetes < 1.10.2, quobyteTenant needs point to the tenant's uuid.
+# Later versions are able to resolve the tenant's name.
+    quobyteTenant: "<uuid of tenant>"
     createQuota: "False"
 reclaimPolicy: Retain

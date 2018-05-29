@@ -7,7 +7,7 @@ the QuobyteVolumeSource like in `deploy/example-pod.yaml`
 volumes:
 - name: quobytevolume
   quobyte:
-    registry: LBIP:7861
+    registry: ignored:7861 # Unused string required for API compatibility
     volume: testVolume
     readOnly: false
     user: username
@@ -74,7 +74,7 @@ spec:
     - ReadWriteOnce
   storageClassName: "base"
   quobyte:
-    registry: LBIP:7861
+    registry: ignored:7861 # Unused string required for API compatibility
     volume: test
     readOnly: false
     user: username
@@ -87,6 +87,9 @@ $ kubectl -n quobyte create -f volumes/pv.yaml
 
 For dynamic provisioning, a StorageClass is created, which manages the
 lifecycle of Quobyte volumes.
+Each provisioner is bound to a Quobyte tenant, which is specified in the 'quobyteTenant' field.
+The UUID of the tenant can be found in the Webconsole.
+For Kubernetes > 1.10, the 'quobyteTenant' can specify the name of the tenant.
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -102,7 +105,7 @@ parameters:
     user: "username"
     group: "groupname"
     quobyteConfig: "BASE"
-    quobyteTenant: "DEFAULT"
+    quobyteTenant: "uuid of tenant"
     createQuota: "False"
 ```
 
@@ -135,7 +138,7 @@ Quobyte supports multiple tenants and provides a secure mapping of containers to
 For a longer read, please see the article on the Quobyte blog:
 [The State of Secure Storage Access in Container Infrastructures](https://www.quobyte.com/blog/2017/03/17/the-state-of-secure-storage-access-in-container-infrastructures/)
 
-The kubernetes deployments of the Quobyte client use the `--allow-usermapping-in-volumename`, which allows to map all accesses to the
+The Kubernetes deployments of the Quobyte client use the `--allow-usermapping-in-volumename`, which allows to map all accesses to the
 volume to a particular user/group, independent of the accessing user.
 If you specify `user#group@volume_name` instead of just the volumename,
 the Quobyte client will map all storage accesses to the `user:group`.
