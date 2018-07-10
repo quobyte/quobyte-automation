@@ -1,5 +1,0 @@
-FROM centos:7
-ADD operator /
-COPY ./pkg/artifacts /pkg/artifacts
-COPY ./pkg/web/public /public
-CMD ["/operator"]
