@@ -16,6 +16,12 @@ Create the *quobyte* namespace. This is where the operator and the cluster lives
 ``` bash
 kubectl create -f quobyte-ns.yaml
 ```
+
+Once the namespace is created, deploy required RBAC and the operator.
+``` bash
+kubectl -n quobyte create -f operator.yaml
+```
+## Configure Quobyte Services with Operaoar (Optional)
 Quobyte runs best with 3 replicas of the registry, where we require 1 bootstrapped registry. To make the setup as easy as possible, we defined an ephemeral registry, which is used to bootstrap the cluster. The final cluster will have registry devices on nodes 2, 3, and 4, so we will use node1 for bootstrap.
 
 The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and allows to fine tune the memory limits for the services. Edit the file to point to your bootstrap registry.
@@ -24,45 +30,45 @@ The `quobyte-config.yaml` file provides a `registry.bootstrap_node` option and a
   registry.bootstrap_node: "node1"
 ```
 
-Now install the operator to the quobyte namespace.
+Now create the configurations and services daemonsets.
 ``` bash
 kubectl -n quobyte create -f quobyte-config.yaml
-kubectl -n quobyte create -f operator.yaml
+kubectl -n quobyte create -f services.yaml
 ```
 
-## Configure Quobyte Services
 To run the Quobyte services in kubernetes, first edit the services-config.yaml file,
 and determine which node should run which services.
 
 We chose node1 to be the bootstrap registry, but we need to define 3 other nodes to persist the fully replicated cluster. We also recommend to start at least 3 metadata services and data services on all nodes which contain devices which should store your valuable information. Edit the `services-config.yaml` to match your cluster:
 
 ```yaml
-  registry:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: true
-    nodes:
-      - node1 # will become the ephemeral bootstrap node
-  metadata:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: true
-    nodes:
-      - node1
-      - node2
-      - node3
-      - node4
-  data:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: true
-    nodes:
-      - node1
-      - node2
-      - node3
-      - node4
+apiVersion: quobyte.com/v1
+kind: QuobyteService
+metadata:
+name: quobyte-services
+spec:
+registry:
+  daemonSetName: registry
+  nodes:
+    - node1 # will become the ephimeral bootstrap device
+metadata:
+  daemonSetName: metadata
+  nodes:
+    - node1
+    - node2
+    - node3
+    - node4
+data:
+  daemonSetName: data
+  nodes:
+    - node1
+    - node2
+    - node3
+    - node4
 ```
 
-When the services are installed, the operator will start to deploy the services to the target nodes.
+When the services-config created,the operator will start to deploy the services to the target nodes.
 ```
-kubectl -n quobyte create -f services.yaml
 kubectl -n quobyte create -f services-config.yaml
 kubectl -n quobyte create -f qmgmt-pod.yaml
 
@@ -113,8 +119,7 @@ Edit the `services-config.yaml` to match your cluster
 
 ```yaml
   registry:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: true
+    daemonSetName: registry
     nodes:
       - node1 # will become the ephemeral bootstrap node
       - node2
@@ -155,8 +160,7 @@ If we see 3 ONLINE registries, the work of the ephemeral bootstrap node is done
 and it is safe to delete it. So remove it from the `services-config.yaml`
 ```yaml
   registry:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: true
+    daemonSetName: registry
     nodes:
       - node2
       - node3
@@ -196,18 +200,19 @@ First edit the `client-config.yaml`
 
 ```yaml
 spec:
-    image: quay.io/quobyte/quobyte-client:2
-    rolling_updates_enabled: true
+    rollingUpdatesEnabled: true
+    daemonSetName: client
     nodes:
       - node1
       - node2
       - node3
       - node4
 ```
+Nodes are optional. If not given, operator queries nodes with the `nodeSelector` in the `daemonSetName: client` and does only updates.
 
 ```bash
-kubectl -n quobyte create -f client-config.yaml
 kubectl -n quobyte create -f client.yaml
+kubectl -n quobyte create -f client-config.yaml
 ```
 
 Once the client-config is created, you should see pods being started on the
@@ -223,9 +228,7 @@ When the clients are ready, you can start using Quobyte volumes in your pods.
 Please have a look at [Volume Access](../using_quobyte_volumes.md) for examples.
 
 # Rolling Updates
-Note: Rolling updates are currently in Beta.
-The operator supports rolling updates. When you change the container version
-in the client-config.yaml or services-config.yaml, and rolling updates are enabled, the operator will upgrade one node after the other.
+The operator supports rolling updates only for **clients**. To trigger rolling update of client, please change the container image of daemonset configured in the client-config.yaml. Set `rollingUpdatesEnabled: true` , the operator will upgrade one node after the other.
 
 Quobyte service containers are updated with careful timing between pod restarts, to always ensure availability of the Quobyte services.
 
@@ -234,13 +237,16 @@ pod restart, all other pods on the same node, which currently access a Quobyte v
 It's not a good idea to give an operator full permission to drain a full node, we decided to go for a defensive mode.
 For every node to upgrade, the operator checks for other pods with Quobyte volumes mounted. If no pods are found, the client is restarted immediately.
 If pods are found, they are listed on the operator's status page. The operator also supports to retrieve its status as json.
-The administrator will then need to manually stop or drain the pods.   
+The administrator will then need to manually stop or drain the pods.  
 
-The operator comes with a service and a status page. With kubectl, you can reach it on http://localhost:7878
+The operator comes with a service and a status page for clients. With kubectl, you can reach it on http://localhost:7878
 ```bash
 kubectl -n quobyte port-forward quobyte-operator-xzy 7878:7878
 ```
-
+**Services rolling updates** should follow standard daemonset updates. One way to trigger rolling update for services is to set the new image for daemonset container as shown below
+```
+kubectl set image ds/<daemonset-name> <container-name>=<container-new-image>
+```
 # Uninstall Quobyte with Operator
 If you want to remove all services or clients, remove the config files, before
 you delete the deployments or the operator. This will terminate the scheduled pods and remove the all labels, which the operator applied to any nodes.
@@ -253,21 +259,21 @@ kubectl -n quobyte delete -f client-config.yaml
 # Build Operator from Source
 
 ## Requirements
-1. golang 1.8+
+1. golang 1.10+
 2. glide for package management
 3. docker
 
 ## Build
 1. Clone the repository.
 ```
-git clone git@github.com:quobyte/kubernetes.git quobyte-kubernetes
+git clone git@github.com:quobyte/k8s-operator.git github.com/quobyte/k8s-operator
 ```
 2. Compile and build binary from source.
 ```
-cd quobyte-kubernetes/operator
+cd github.com/quobyte/k8s-operator
 export GOPATH=$(pwd)
 cd src/operator
-CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o operator .
+./build #build the operator binary
 ```
 If you're building for the first time after clone run ``glide install --strip-vendor`` to get the dependencies.
 
@@ -277,21 +283,8 @@ If you're building for the first time after clone run ``glide install --strip-ve
 ```
   Follow [Deploy clients](#deploy-clients), and you can skip step 3 of deploy clients.
 
-4. Build Docker container
-```
-sudo docker build -t operator -f Dockerfile.scratch .
-sudo docker run -it operator
-```
-5. Get the ``CONTAINER ID`` of the operator.
-```
-sudo docker ps -l
-```
-6. Commit the container.
-```
-sudo docker commit <CONTAINER ID>  <Docker-repository-url>
-```
-7. Push to the container repository.
-```
-sudo docker push <Docker-repository-url>
-```
-8. Edit ``operator.yaml`` and point ``quobyte-operator`` container image to the docker image.
+4. Build the container and push it to repository
+``
+./build <repository-url> # push the built image to the container repository-url
+``
+5. Edit ``operator.yaml`` and point ``quobyte-operator`` container image to the docker image.

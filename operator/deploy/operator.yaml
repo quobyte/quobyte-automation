@@ -63,6 +63,10 @@ rules:
   resources:
   - namespaces
   verbs: ["get"]
+- apiGroups: ["apps"]  
+  resources:
+  - daemonsets
+  verbs: ["get","list","watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
@@ -74,10 +78,10 @@ rules:
   resources:
   - pods
   verbs: ["list", "get", "delete", "create", "watch"]
-- apiGroups: ["extensions"]
+- apiGroups: ["apps"]
   resources:
   - daemonsets
-  verbs: ["get","patch"]
+  verbs: ["get","list","watch"]
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -101,7 +105,7 @@ spec:
       serviceAccountName: quobyte-operator
       containers:
       - name: operator
-        image: quay.io/quobyte/k8s-operator:1
+        image: quay.io/quobyte/k8s-operator:2
         imagePullPolicy: Always
         ports:
         - containerPort: 7878

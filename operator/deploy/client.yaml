@@ -1,11 +1,15 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: client
   namespace: quobyte
 spec:
+  # operator requires 'OnDelete' strategy
+  updateStrategy:
+    type: 'OnDelete'
   selector:
     matchLabels:
+     # operator currently supports only single label
       role: client
   template:
     metadata:
@@ -13,10 +17,13 @@ spec:
         prometheus.io/scrape: 'true'
         prometheus.io/path: '/prometheus'
         prometheus.io/port: '55000'
+        # operator requires this flag.
+        quobyteClient: 'true'
       labels:
         role: client
         version: "2"
     spec:
+      # operator uses tain while upgrading the client image
       tolerations:
         - key: "quobyte-upgrade"
           operator: "Equal"
@@ -24,7 +31,7 @@ spec:
           effect: "NoSchedule"
       containers:
       - name: quobyte-client
-        image: quay.io/quobyte/quobyte-client:2
+        image: quay.io/quobyte/quobyte-client:2.3
         imagePullPolicy: Always
         env:
           - name: QUOBYTE_CLIENT_LOG_LEVEL
@@ -116,6 +123,7 @@ spec:
               command: ["/bin/sh", "-xc", "/bin/nsenter -t 1 --wd=. -m -- lib/ld-linux-x86-64.so.2 --library-path ./lib ./bin/umount -f ${QUOBYTE_MOUNT_POINT}"]
       hostPID: true
       nodeSelector:
+        # operator currently supports only single selector
         quobyte_client: "true"
       volumes:
       - name: k8s-plugin-dir

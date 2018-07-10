@@ -4,21 +4,18 @@ metadata:
   name: quobyte-services
 spec:
   registry:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: false
+    daemonSetName: registry
     nodes:
       - node1
   metadata:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: false
+    daemonSetName: metadata
     nodes:
       - node1
       - node2
       - node3
       - node4
   data:
-    image: quay.io/quobyte/quobyte-server:2
-    rolling_updates_enabled: false
+    daemonSetName: data
     nodes:
       - node1
       - node2
